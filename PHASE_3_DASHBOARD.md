@@ -16,13 +16,18 @@ The Prior Authorization Assistant is a Next.js dashboard that visualizes the Pha
 
 All API calls proxy through Next.js Route Handlers — the OAuth Bearer token never touches `localStorage` or the browser JavaScript heap.
 
-### Demo screencast (~9 seconds)
+### Demo screencast
 
-[docs/demo/provider-dashboard-demo.webm](docs/demo/provider-dashboard-demo.webm) — also served in the app at `/demo/provider-dashboard-demo.webm`.
+GitHub does not preview large WebMs — use the compressed assets:
 
-```html
-<video controls src="docs/demo/provider-dashboard-demo.webm"></video>
-```
+| Asset | Path |
+|-------|------|
+| GIF (inline on GitHub README) | [`docs/demo/provider-dashboard-demo.gif`](docs/demo/provider-dashboard-demo.gif) |
+| MP4 | [`docs/demo/provider-dashboard-demo.mp4`](docs/demo/provider-dashboard-demo.mp4) |
+| WebM (small) | [`docs/demo/provider-dashboard-demo-small.webm`](docs/demo/provider-dashboard-demo-small.webm) |
+| Poster | [`docs/demo/provider-dashboard-poster.jpg`](docs/demo/provider-dashboard-poster.jpg) |
+
+Dashboard player: `/demo/provider-dashboard-demo.mp4` (with WebM fallback).
 
 ---
 

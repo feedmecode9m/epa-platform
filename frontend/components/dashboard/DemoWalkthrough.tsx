@@ -4,7 +4,7 @@ export function DemoWalkthrough() {
       <div className="border-b border-slate-100 px-5 py-3">
         <h2 className="text-sm font-semibold text-slate-900">Product walkthrough</h2>
         <p className="mt-0.5 text-sm text-slate-500">
-          9-second screencast of the Prior Authorization Assistant (synthetic demo).
+          Screencast of the Prior Authorization Assistant (synthetic demo).
         </p>
       </div>
       <video
@@ -12,11 +12,13 @@ export function DemoWalkthrough() {
         controls
         playsInline
         preload="metadata"
-        src="/demo/provider-dashboard-demo.webm"
+        poster="/demo/provider-dashboard-poster.jpg"
       >
-        Your browser does not support embedded video. Download{" "}
-        <a href="/demo/provider-dashboard-demo.webm" className="underline">
-          provider-dashboard-demo.webm
+        <source src="/demo/provider-dashboard-demo.mp4" type="video/mp4" />
+        <source src="/demo/provider-dashboard-demo.webm" type="video/webm" />
+        Your browser does not support embedded video.{" "}
+        <a href="/demo/provider-dashboard-demo.mp4" className="underline">
+          Download MP4
         </a>
         .
       </video>

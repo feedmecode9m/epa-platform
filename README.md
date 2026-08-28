@@ -12,12 +12,19 @@ Manual prior authorization burns clinician and revenue-cycle time, drives denial
 
 ---
 
-## Product walkthrough (~9 seconds)
+## Product walkthrough (~13 seconds)
 
-<video controls src="docs/demo/provider-dashboard-demo.webm" width="720"></video>
+GitHub renders this as an inline GIF (the original 9 MB WebM was too large for GitHub’s file viewer):
 
-- File: [`docs/demo/provider-dashboard-demo.webm`](docs/demo/provider-dashboard-demo.webm)
-- Also embedded in the dashboard at `http://localhost:3000` (`/demo/provider-dashboard-demo.webm`)
+![Prior Authorization Assistant — synthetic demo](docs/demo/provider-dashboard-demo.gif)
+
+| Format | Size | Link |
+|--------|------|------|
+| GIF (README / preview) | ~1.9 MB | [`docs/demo/provider-dashboard-demo.gif`](docs/demo/provider-dashboard-demo.gif) |
+| MP4 | ~1.6 MB | [`docs/demo/provider-dashboard-demo.mp4`](docs/demo/provider-dashboard-demo.mp4) |
+| WebM | ~810 KB | [`docs/demo/provider-dashboard-demo-small.webm`](docs/demo/provider-dashboard-demo-small.webm) |
+
+Also embedded on the local dashboard at `http://localhost:3000`.
 
 ---
 
