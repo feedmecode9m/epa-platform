@@ -1,0 +1,73 @@
+{
+  "version": "1.0.0",
+  "description": "Mock payer policy rulebook for synthetic prior authorization scoring",
+  "policies": [
+    {
+      "id": "spine-surgery-lumbar",
+      "name": "Lumbar Spine Surgery Prior Authorization",
+      "match": {
+        "procedure_codes": ["63030", "63047", "72148"],
+        "diagnosis_codes": ["M51.26", "M48.062", "M54.5"]
+      },
+      "requirements": {
+        "min_conservative_therapy_weeks": 6,
+        "required_documentation": [
+          "MRI or CT imaging report confirming pathology",
+          "Documented failure of conservative treatment (≥6 weeks PT)",
+          "Clinical notes describing functional impairment",
+          "Provider NPI and specialty"
+        ],
+        "required_entities": ["condition", "procedure", "conservative_therapy", "clinical_justification"]
+      },
+      "weights": {
+        "has_imaging": 25,
+        "conservative_therapy_met": 30,
+        "clinical_justification": 20,
+        "diagnosis_match": 15,
+        "procedure_match": 10
+      }
+    },
+    {
+      "id": "glp1-diabetes",
+      "name": "GLP-1 Agonist Prior Authorization",
+      "match": {
+        "medication_codes": ["1991302"],
+        "diagnosis_codes": ["E11.9", "E11.65"]
+      },
+      "requirements": {
+        "required_documentation": [
+          "HbA1c ≥ 7.5% documented within 90 days",
+          "Trial of metformin documented",
+          "BMI or comorbidity justification"
+        ],
+        "required_entities": ["condition", "medication"]
+      },
+      "weights": {
+        "diagnosis_match": 30,
+        "medication_match": 30,
+        "step_therapy_documented": 40
+      }
+    },
+    {
+      "id": "biologic-asthma",
+      "name": "Asthma Biologic Prior Authorization",
+      "match": {
+        "medication_codes": ["1876376"],
+        "diagnosis_codes": ["J45.40", "J45.50"]
+      },
+      "requirements": {
+        "required_documentation": [
+          "Documented ICS/LABA trial ≥3 months",
+          "≥2 exacerbations in 12 months or eosinophil count",
+          "Pulmonary function test results"
+        ],
+        "required_entities": ["condition", "medication", "clinical_justification"]
+      },
+      "weights": {
+        "diagnosis_match": 25,
+        "medication_match": 25,
+        "clinical_justification": 50
+      }
+    }
+  ]
+}

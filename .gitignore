@@ -1,0 +1,37 @@
+# Dependencies & environments
+backend/venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Secrets & local env
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+backend/keys/
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Python packaging
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+
+# Duplicate demo video in public is kept; ignore nothing for webm

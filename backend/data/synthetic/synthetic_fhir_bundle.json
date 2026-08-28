@@ -1,0 +1,602 @@
+{
+  "generated_at": "2026-08-28T14:09:40.356889+00:00",
+  "disclaimer": "SYNTHETIC DATA ONLY \u2014 NOT REAL PHI",
+  "patient_count": 3,
+  "bundle": {
+    "resourceType": "Bundle",
+    "type": "collection",
+    "timestamp": "2026-08-28T14:09:40.356883+00:00",
+    "entry": [
+      {
+        "fullUrl": "urn:uuid:synth-patient-0000",
+        "resource": {
+          "resourceType": "Patient",
+          "id": "synth-patient-0000",
+          "meta": {
+            "profile": [
+              "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            ]
+          },
+          "identifier": [
+            {
+              "system": "urn:oid:synthetic-mrn",
+              "value": "MRN-SYN-000000"
+            }
+          ],
+          "name": [
+            {
+              "use": "official",
+              "family": "Fauxson",
+              "given": [
+                "Quinn"
+              ]
+            }
+          ],
+          "gender": "other",
+          "birthDate": "1999-12-12",
+          "address": [
+            {
+              "use": "home",
+              "line": [
+                "100 Synthetic Lane"
+              ],
+              "city": "Devton",
+              "state": "CA",
+              "postalCode": "90000"
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-practitioner-0000",
+        "resource": {
+          "resourceType": "Practitioner",
+          "id": "synth-practitioner-0000",
+          "identifier": [
+            {
+              "system": "http://npiregistry.example/synthetic",
+              "value": "NPI-SYN-0000000"
+            }
+          ],
+          "name": [
+            {
+              "family": "Provider",
+              "given": [
+                "Synthetic0"
+              ],
+              "prefix": [
+                "Dr."
+              ]
+            }
+          ],
+          "qualification": [
+            {
+              "code": {
+                "text": "MD"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-coverage-0000",
+        "resource": {
+          "resourceType": "Coverage",
+          "id": "synth-coverage-0000",
+          "status": "active",
+          "beneficiary": {
+            "reference": "Patient/synth-patient-0000"
+          },
+          "payor": [
+            {
+              "reference": "Organization/payer-aetna-synth"
+            }
+          ],
+          "class": [
+            {
+              "type": {
+                "text": "plan"
+              },
+              "value": "SYN-PLAN-0000"
+            }
+          ],
+          "period": {
+            "start": "2024-01-01",
+            "end": "2026-12-31"
+          }
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:payer-aetna-synth",
+        "resource": {
+          "resourceType": "Organization",
+          "id": "payer-aetna-synth",
+          "name": "Synthetic Aetna Health",
+          "type": [
+            {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                  "code": "ins"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-claim-0000",
+        "resource": {
+          "resourceType": "Claim",
+          "id": "synth-claim-0000",
+          "status": "active",
+          "type": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+                "code": "professional"
+              }
+            ]
+          },
+          "use": "preauthorization",
+          "patient": {
+            "reference": "Patient/synth-patient-0000"
+          },
+          "insurer": {
+            "reference": "Organization/payer-aetna-synth"
+          },
+          "created": "2026-08-28T14:09:40.356508+00:00",
+          "item": [
+            {
+              "sequence": 1,
+              "productOrService": {
+                "coding": [
+                  {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": "63030",
+                    "display": "Laminotomy"
+                  }
+                ]
+              },
+              "diagnosisSequence": [
+                1
+              ]
+            }
+          ],
+          "diagnosis": [
+            {
+              "sequence": 1,
+              "diagnosisCodeableConcept": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                    "code": "M51.26",
+                    "display": "Other intervertebral disc displacement, lumbar region"
+                  }
+                ]
+              }
+            }
+          ],
+          "insurance": [
+            {
+              "sequence": 1,
+              "coverage": {
+                "reference": "Coverage/synth-coverage-0000"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:note-0000",
+        "resource": {
+          "resourceType": "DocumentReference",
+          "id": "synth-note-0000",
+          "status": "current",
+          "type": {
+            "text": "Progress Note"
+          },
+          "subject": {
+            "reference": "Patient/synth-patient-0000"
+          },
+          "description": "MRI confirms L4-L5 disc herniation with radiculopathy. Patient completed 8 weeks of conservative physical therapy without improvement. Requesting lumbar microdiscectomy (CPT 63030)."
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-patient-0001",
+        "resource": {
+          "resourceType": "Patient",
+          "id": "synth-patient-0001",
+          "meta": {
+            "profile": [
+              "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            ]
+          },
+          "identifier": [
+            {
+              "system": "urn:oid:synthetic-mrn",
+              "value": "MRN-SYN-000001"
+            }
+          ],
+          "name": [
+            {
+              "use": "official",
+              "family": "Fauxson",
+              "given": [
+                "Morgan"
+              ]
+            }
+          ],
+          "gender": "male",
+          "birthDate": "1969-01-14",
+          "address": [
+            {
+              "use": "home",
+              "line": [
+                "101 Synthetic Lane"
+              ],
+              "city": "Devton",
+              "state": "CA",
+              "postalCode": "90000"
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-practitioner-0001",
+        "resource": {
+          "resourceType": "Practitioner",
+          "id": "synth-practitioner-0001",
+          "identifier": [
+            {
+              "system": "http://npiregistry.example/synthetic",
+              "value": "NPI-SYN-0000001"
+            }
+          ],
+          "name": [
+            {
+              "family": "Provider",
+              "given": [
+                "Synthetic1"
+              ],
+              "prefix": [
+                "Dr."
+              ]
+            }
+          ],
+          "qualification": [
+            {
+              "code": {
+                "text": "MD"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-coverage-0001",
+        "resource": {
+          "resourceType": "Coverage",
+          "id": "synth-coverage-0001",
+          "status": "active",
+          "beneficiary": {
+            "reference": "Patient/synth-patient-0001"
+          },
+          "payor": [
+            {
+              "reference": "Organization/payer-uhc-synth"
+            }
+          ],
+          "class": [
+            {
+              "type": {
+                "text": "plan"
+              },
+              "value": "SYN-PLAN-0001"
+            }
+          ],
+          "period": {
+            "start": "2024-01-01",
+            "end": "2026-12-31"
+          }
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:payer-uhc-synth",
+        "resource": {
+          "resourceType": "Organization",
+          "id": "payer-uhc-synth",
+          "name": "Synthetic United Health",
+          "type": [
+            {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                  "code": "ins"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-claim-0001",
+        "resource": {
+          "resourceType": "Claim",
+          "id": "synth-claim-0001",
+          "status": "active",
+          "type": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+                "code": "professional"
+              }
+            ]
+          },
+          "use": "preauthorization",
+          "patient": {
+            "reference": "Patient/synth-patient-0001"
+          },
+          "insurer": {
+            "reference": "Organization/payer-uhc-synth"
+          },
+          "created": "2026-08-28T14:09:40.356613+00:00",
+          "item": [
+            {
+              "sequence": 1,
+              "productOrService": {
+                "coding": [
+                  {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": "63030",
+                    "display": "Laminotomy"
+                  }
+                ]
+              },
+              "diagnosisSequence": [
+                1
+              ]
+            }
+          ],
+          "diagnosis": [
+            {
+              "sequence": 1,
+              "diagnosisCodeableConcept": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                    "code": "M51.26",
+                    "display": "Other intervertebral disc displacement, lumbar region"
+                  }
+                ]
+              }
+            }
+          ],
+          "insurance": [
+            {
+              "sequence": 1,
+              "coverage": {
+                "reference": "Coverage/synth-coverage-0001"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:note-0001",
+        "resource": {
+          "resourceType": "DocumentReference",
+          "id": "synth-note-0001",
+          "status": "current",
+          "type": {
+            "text": "Progress Note"
+          },
+          "subject": {
+            "reference": "Patient/synth-patient-0001"
+          },
+          "description": "Patient failed 6 weeks of conservative physical therapy for chronic lower back pain. Assessment: lumbar spondylosis with stenosis (M48.062). Recommend laminectomy evaluation."
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-patient-0002",
+        "resource": {
+          "resourceType": "Patient",
+          "id": "synth-patient-0002",
+          "meta": {
+            "profile": [
+              "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+            ]
+          },
+          "identifier": [
+            {
+              "system": "urn:oid:synthetic-mrn",
+              "value": "MRN-SYN-000002"
+            }
+          ],
+          "name": [
+            {
+              "use": "official",
+              "family": "Fauxson",
+              "given": [
+                "Quinn"
+              ]
+            }
+          ],
+          "gender": "female",
+          "birthDate": "1977-02-25",
+          "address": [
+            {
+              "use": "home",
+              "line": [
+                "102 Synthetic Lane"
+              ],
+              "city": "Devton",
+              "state": "CA",
+              "postalCode": "90000"
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-practitioner-0002",
+        "resource": {
+          "resourceType": "Practitioner",
+          "id": "synth-practitioner-0002",
+          "identifier": [
+            {
+              "system": "http://npiregistry.example/synthetic",
+              "value": "NPI-SYN-0000002"
+            }
+          ],
+          "name": [
+            {
+              "family": "Provider",
+              "given": [
+                "Synthetic2"
+              ],
+              "prefix": [
+                "Dr."
+              ]
+            }
+          ],
+          "qualification": [
+            {
+              "code": {
+                "text": "MD"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-coverage-0002",
+        "resource": {
+          "resourceType": "Coverage",
+          "id": "synth-coverage-0002",
+          "status": "active",
+          "beneficiary": {
+            "reference": "Patient/synth-patient-0002"
+          },
+          "payor": [
+            {
+              "reference": "Organization/payer-bcbs-synth"
+            }
+          ],
+          "class": [
+            {
+              "type": {
+                "text": "plan"
+              },
+              "value": "SYN-PLAN-0002"
+            }
+          ],
+          "period": {
+            "start": "2024-01-01",
+            "end": "2026-12-31"
+          }
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:payer-bcbs-synth",
+        "resource": {
+          "resourceType": "Organization",
+          "id": "payer-bcbs-synth",
+          "name": "Synthetic BCBS Regional",
+          "type": [
+            {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+                  "code": "ins"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:synth-claim-0002",
+        "resource": {
+          "resourceType": "Claim",
+          "id": "synth-claim-0002",
+          "status": "active",
+          "type": {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/claim-type",
+                "code": "professional"
+              }
+            ]
+          },
+          "use": "preauthorization",
+          "patient": {
+            "reference": "Patient/synth-patient-0002"
+          },
+          "insurer": {
+            "reference": "Organization/payer-bcbs-synth"
+          },
+          "created": "2026-08-28T14:09:40.356670+00:00",
+          "item": [
+            {
+              "sequence": 1,
+              "productOrService": {
+                "coding": [
+                  {
+                    "system": "http://www.ama-assn.org/go/cpt",
+                    "code": "63030",
+                    "display": "Laminotomy"
+                  }
+                ]
+              },
+              "diagnosisSequence": [
+                1
+              ]
+            }
+          ],
+          "diagnosis": [
+            {
+              "sequence": 1,
+              "diagnosisCodeableConcept": {
+                "coding": [
+                  {
+                    "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                    "code": "M51.26",
+                    "display": "Other intervertebral disc displacement, lumbar region"
+                  }
+                ]
+              }
+            }
+          ],
+          "insurance": [
+            {
+              "sequence": 1,
+              "coverage": {
+                "reference": "Coverage/synth-coverage-0002"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "fullUrl": "urn:uuid:note-0002",
+        "resource": {
+          "resourceType": "DocumentReference",
+          "id": "synth-note-0002",
+          "status": "current",
+          "type": {
+            "text": "Progress Note"
+          },
+          "subject": {
+            "reference": "Patient/synth-patient-0002"
+          },
+          "description": "Type 2 diabetes poorly controlled on metformin. A1c 9.2%. Initiating GLP-1 agonist (semaglutide). Prior auth requested for Ozempic 0.5mg weekly."
+        }
+      }
+    ]
+  },
+  "clinical_notes": [
+    "MRI confirms L4-L5 disc herniation with radiculopathy. Patient completed 8 weeks of conservative physical therapy without improvement. Requesting lumbar microdiscectomy (CPT 63030).",
+    "Patient failed 6 weeks of conservative physical therapy for chronic lower back pain. Assessment: lumbar spondylosis with stenosis (M48.062). Recommend laminectomy evaluation.",
+    "Type 2 diabetes poorly controlled on metformin. A1c 9.2%. Initiating GLP-1 agonist (semaglutide). Prior auth requested for Ozempic 0.5mg weekly."
+  ]
+}

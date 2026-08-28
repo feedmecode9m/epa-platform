@@ -1,0 +1,1832 @@
+openapi: 3.1.0
+info:
+  title: EPA Platform API
+  version: 1.0.0
+  description: |
+    HIPAA-compliant electronic Prior Authorization (ePA) platform API aligned with
+    HL7 FHIR R4 and SMART on FHIR v2.0.1.
+
+    ## Audit & Immutability
+
+    All mutating operations are **append-only**. Prior authorization submissions and
+    eligibility checks cannot be deleted or overwritten; corrections are submitted as
+    new resources linked via `Claim.related` or `CoverageEligibilityRequest.basedOn`.
+
+    Every request MUST include audit correlation headers. Responses include
+    `X-Audit-Event-Id` and `X-Resource-Version` for immutable audit trail linkage.
+
+    ## FHIR Content
+
+    Request and response bodies use FHIR R4 JSON (`application/fhir+json`) unless
+    noted. See `fhir-profiles/README.md` for StructureDefinition mappings.
+
+  contact:
+    name: EPA Platform API Support
+    email: api-support@epa-platform.example.com
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+servers:
+  - url: https://api.epa-platform.example.com
+    description: Production
+  - url: https://api.staging.epa-platform.example.com
+    description: Staging
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: OAuth
+    description: SMART on FHIR OAuth 2.0 authorization server endpoints
+  - name: Prior Authorization
+    description: ePA submission and status (FHIR Claim / ClaimResponse)
+  - name: Eligibility
+    description: Coverage eligibility checks (FHIR CoverageEligibilityRequest/Response)
+  - name: Metadata
+    description: SMART configuration and capability discovery
+
+security:
+  - smartOAuth:
+      - openid
+      - fhirUser
+      - launch
+      - offline_access
+
+paths:
+  /.well-known/smart-configuration:
+    get:
+      tags: [Metadata]
+      operationId: getSmartConfiguration
+      summary: SMART on FHIR configuration
+      description: |
+        Returns SMART App Launch configuration per
+        [SMART App Launch IG](http://hl7.org/fhir/smart-app-launch/).
+      security: []
+      responses:
+        '200':
+          description: SMART configuration document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SmartConfiguration'
+
+  /oauth/authorize:
+    get:
+      tags: [OAuth]
+      operationId: oauthAuthorize
+      summary: OAuth 2.0 authorization endpoint (SMART App Launch)
+      description: |
+        Initiates the SMART authorization code flow with PKCE (S256 required).
+        Supports `launch` (EHR) and standalone patient/provider flows.
+      security: []
+      parameters:
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+        - name: scope
+          in: query
+          required: true
+          description: |
+            Space-delimited SMART scopes. Example:
+            `launch patient/Patient.read patient/Coverage.read user/Claim.write openid fhirUser`
+          schema:
+            type: string
+            example: launch patient/Patient.read user/Claim.write openid fhirUser
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 8
+        - name: aud
+          in: query
+          required: true
+          description: FHIR server base URL (resource server audience)
+          schema:
+            type: string
+            format: uri
+            example: https://api.epa-platform.example.com/fhir/R4
+        - name: code_challenge
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [S256]
+        - name: launch
+          in: query
+          required: false
+          description: EHR launch context handle (required for EHR launch)
+          schema:
+            type: string
+        - name: nonce
+          in: query
+          required: false
+          description: Required when `openid` scope is requested
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to client redirect_uri with authorization code
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '400':
+          $ref: '#/components/responses/OAuthError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /oauth/token:
+    post:
+      tags: [OAuth]
+      operationId: oauthToken
+      summary: OAuth 2.0 token endpoint
+      description: |
+        Exchanges authorization codes or refresh tokens for access tokens.
+        Supports `authorization_code` and `refresh_token` grant types.
+        Client authentication via `client_secret_basic`, `client_secret_post`,
+        or `private_key_jwt` (preferred for confidential apps).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/AuthorizationCodeTokenRequest'
+                - $ref: '#/components/schemas/RefreshTokenRequest'
+                - $ref: '#/components/schemas/ClientCredentialsTokenRequest'
+            examples:
+              authorization_code:
+                summary: Authorization code exchange with PKCE
+                value:
+                  grant_type: authorization_code
+                  code: AUTH_CODE_EXAMPLE
+                  redirect_uri: https://app.example.com/callback
+                  client_id: epa-client-001
+                  code_verifier: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+              refresh_token:
+                summary: Refresh token rotation
+                value:
+                  grant_type: refresh_token
+                  refresh_token: REFRESH_TOKEN_EXAMPLE
+                  client_id: epa-client-001
+                  scope: patient/Patient.read user/Claim.write openid
+      responses:
+        '200':
+          description: Token response
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+            Pragma:
+              schema:
+                type: string
+                example: no-cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '#/components/responses/OAuthError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /oauth/introspect:
+    post:
+      tags: [OAuth]
+      operationId: oauthIntrospect
+      summary: OAuth 2.0 token introspection (RFC 7662)
+      description: |
+        Validates access or refresh tokens. Restricted to confidential resource
+        servers and authorized audit services. Returns active status and granted scopes.
+      security:
+        - clientCredentials: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: Access or refresh token to introspect
+                token_type_hint:
+                  type: string
+                  enum: [access_token, refresh_token]
+      responses:
+        '200':
+          description: Token introspection result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenIntrospectionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /oauth/revoke:
+    post:
+      tags: [OAuth]
+      operationId: oauthRevoke
+      summary: OAuth 2.0 token revocation (RFC 7009)
+      security:
+        - clientCredentials: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                token_type_hint:
+                  type: string
+                  enum: [access_token, refresh_token]
+      responses:
+        '200':
+          description: Token revoked (always returns 200 per RFC 7009)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/prior-authorization/request:
+    post:
+      tags: [Prior Authorization]
+      operationId: submitPriorAuthorizationRequest
+      summary: Submit a prior authorization request
+      description: |
+        Accepts a FHIR R4 `Claim` resource (use case: prior authorization) wrapped in
+        a platform envelope. Creates an immutable submission record and returns a
+        tracking identifier.
+
+        **Immutability:** Submissions are append-only. Use `Claim.related` to link
+        amendments. Duplicate submissions with the same `Idempotency-Key` return the
+        original response (HTTP 200) without creating a new record.
+
+        **Required scopes:** `user/Claim.write` or `patient/Claim.write` (patient-facing apps)
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/XCorrelationId'
+        - $ref: '#/components/parameters/XClientId'
+        - $ref: '#/components/parameters/XAuditSource'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/fhir+json:
+            schema:
+              $ref: '#/components/schemas/PriorAuthorizationRequestEnvelope'
+            examples:
+              medication_pa:
+                summary: Medication prior authorization
+                value:
+                  resourceType: Bundle
+                  type: collection
+                  entry:
+                    - fullUrl: urn:uuid:patient-1
+                      resource:
+                        resourceType: Patient
+                        id: example-patient
+                        identifier:
+                          - system: http://hospital.example.org/mrn
+                            value: MRN-12345
+                        name:
+                          - family: Smith
+                            given: [Jane]
+                        birthDate: '1985-03-15'
+                        gender: female
+                    - fullUrl: urn:uuid:claim-1
+                      resource:
+                        resourceType: Claim
+                        status: active
+                        type:
+                          coding:
+                            - system: http://terminology.hl7.org/CodeSystem/claim-type
+                              code: pharmacy
+                        use: preauthorization
+                        patient:
+                          reference: urn:uuid:patient-1
+                        created: '2026-08-28T13:00:00Z'
+                        insurer:
+                          reference: Organization/payer-001
+                        provider:
+                          reference: PractitionerRole/prescriber-001
+                        priority:
+                          coding:
+                            - code: normal
+                        item:
+                          - sequence: 1
+                            productOrService:
+                              coding:
+                                - system: http://www.nlm.nih.gov/research/umls/rxnorm
+                                  code: '860975'
+                                  display: Metformin 500 MG Oral Tablet
+                            quantity:
+                              value: 90
+                              unit: tablets
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriorAuthorizationRequestEnvelope'
+      responses:
+        '201':
+          description: Prior authorization request accepted
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            X-Correlation-Id:
+              $ref: '#/components/headers/XCorrelationId'
+            X-Audit-Event-Id:
+              $ref: '#/components/headers/XAuditEventId'
+            X-Resource-Version:
+              $ref: '#/components/headers/XResourceVersion'
+            Location:
+              description: URL of the created PA status resource
+              schema:
+                type: string
+                format: uri
+                example: /api/v1/prior-authorization/status/pa-req-7f3a2b1c
+          content:
+            application/fhir+json:
+              schema:
+                $ref: '#/components/schemas/PriorAuthorizationSubmissionResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorAuthorizationSubmissionResponse'
+        '200':
+          description: Idempotent replay — original submission returned
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            X-Audit-Event-Id:
+              $ref: '#/components/headers/XAuditEventId'
+          content:
+            application/fhir+json:
+              schema:
+                $ref: '#/components/schemas/PriorAuthorizationSubmissionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - smartOAuth:
+            - user/Claim.write
+            - patient/Claim.write
+            - openid
+            - fhirUser
+
+  /api/v1/prior-authorization/status/{id}:
+    get:
+      tags: [Prior Authorization]
+      operationId: getPriorAuthorizationStatus
+      summary: Retrieve prior authorization status
+      description: |
+        Returns the current disposition of a prior authorization request as a FHIR
+        `ClaimResponse` (and supporting `Task` workflow state).
+
+        Status transitions are append-only; the response includes the full audit chain
+        reference via `meta.tag` and platform extensions.
+
+        **Required scopes:** `user/Claim.read` or `patient/Claim.read`
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Platform-assigned prior authorization request identifier
+          schema:
+            type: string
+            pattern: '^pa-req-[a-f0-9]{8,32}$'
+            example: pa-req-7f3a2b1c
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/XCorrelationId'
+        - $ref: '#/components/parameters/XClientId'
+        - name: _include
+          in: query
+          required: false
+          description: FHIR-style include parameters for related resources
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - ClaimResponse:patient
+                - ClaimResponse:insurer
+                - Task:based-on
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: Prior authorization status
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            X-Correlation-Id:
+              $ref: '#/components/headers/XCorrelationId'
+            X-Audit-Event-Id:
+              $ref: '#/components/headers/XAuditEventId'
+            X-Resource-Version:
+              $ref: '#/components/headers/XResourceVersion'
+            ETag:
+              description: Opaque version token for optimistic concurrency reads
+              schema:
+                type: string
+                example: W/"v3-a1b2c3d4"
+            Cache-Control:
+              schema:
+                type: string
+                example: private, no-cache
+          content:
+            application/fhir+json:
+              schema:
+                $ref: '#/components/schemas/PriorAuthorizationStatusResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorAuthorizationStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - smartOAuth:
+            - user/Claim.read
+            - patient/Claim.read
+            - openid
+
+  /api/v1/patient/eligibility:
+    post:
+      tags: [Eligibility]
+      operationId: checkPatientEligibility
+      summary: Check patient coverage eligibility
+      description: |
+        Submits a FHIR R4 `CoverageEligibilityRequest` and returns a
+        `CoverageEligibilityResponse`. Supports benefits inquiry and prior-auth-required
+        discovery per Da Vinci Health Insurance Discovery / 270/271 patterns.
+
+        **Immutability:** Each eligibility check is logged as an immutable `AuditEvent`.
+        Re-checks create new resources; prior responses are retained for compliance.
+
+        **Required scopes:** `user/CoverageEligibilityRequest.write` or
+        `patient/CoverageEligibilityRequest.write`
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/XCorrelationId'
+        - $ref: '#/components/parameters/XClientId'
+        - $ref: '#/components/parameters/XAuditSource'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/fhir+json:
+            schema:
+              $ref: '#/components/schemas/EligibilityRequestEnvelope'
+            examples:
+              benefits_check:
+                summary: Pharmacy benefits eligibility
+                value:
+                  resourceType: CoverageEligibilityRequest
+                  status: active
+                  purpose:
+                    - benefits
+                    - auth-requirements
+                  patient:
+                    reference: Patient/example-patient
+                  created: '2026-08-28T13:00:00Z'
+                  insurer:
+                    reference: Organization/payer-001
+                  insurance:
+                    - focal: true
+                      coverage:
+                        reference: Coverage/subscriber-coverage
+                  item:
+                    - category:
+                        coding:
+                          - system: http://terminology.hl7.org/CodeSystem/ex-benefitcategory
+                            code: pharmacy
+                      productOrService:
+                        coding:
+                          - system: http://www.nlm.nih.gov/research/umls/rxnorm
+                            code: '860975'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EligibilityRequestEnvelope'
+      responses:
+        '201':
+          description: Eligibility response created
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            X-Correlation-Id:
+              $ref: '#/components/headers/XCorrelationId'
+            X-Audit-Event-Id:
+              $ref: '#/components/headers/XAuditEventId'
+            X-Resource-Version:
+              $ref: '#/components/headers/XResourceVersion'
+          content:
+            application/fhir+json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponseEnvelope'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponseEnvelope'
+        '200':
+          description: Idempotent replay of prior eligibility check
+          headers:
+            X-Audit-Event-Id:
+              $ref: '#/components/headers/XAuditEventId'
+          content:
+            application/fhir+json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponseEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - smartOAuth:
+            - user/CoverageEligibilityRequest.write
+            - patient/CoverageEligibilityRequest.write
+            - patient/Patient.read
+            - patient/Coverage.read
+            - openid
+            - fhirUser
+
+components:
+  securitySchemes:
+    smartOAuth:
+      type: oauth2
+      description: |
+        SMART on FHIR OAuth 2.0 with PKCE. Scopes follow the pattern
+        `{context}/{ResourceType}.{permission}` where context is `patient`, `user`,
+        or `system`.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://api.epa-platform.example.com/oauth/authorize
+          tokenUrl: https://api.epa-platform.example.com/oauth/token
+          refreshUrl: https://api.epa-platform.example.com/oauth/token
+          scopes:
+            openid: OpenID Connect identity
+            fhirUser: FHIR Practitioner/Patient/User resource URL for current user
+            launch: EHR launch context
+            launch/patient: Request patient context at launch
+            offline_access: Issue refresh tokens
+            online_access: Issue access tokens (implicit in code flow)
+            patient/Patient.read: Read patient demographics (patient context)
+            patient/Coverage.read: Read patient coverage (patient context)
+            patient/Claim.read: Read patient prior auth claims (patient context)
+            patient/Claim.write: Submit patient prior auth claims (patient context)
+            patient/CoverageEligibilityRequest.write: Submit eligibility checks (patient context)
+            user/Patient.read: Read any patient the user has access to
+            user/Coverage.read: Read coverage for accessible patients
+            user/Claim.read: Read prior auth claims
+            user/Claim.write: Submit prior authorization requests
+            user/CoverageEligibilityRequest.write: Submit coverage eligibility requests
+            user/CoverageEligibilityResponse.read: Read eligibility responses
+            system/Claim.read: Backend service read all claims
+            system/AuditEvent.read: Audit service read audit events
+
+    clientCredentials:
+      type: oauth2
+      description: Client credentials for confidential server-to-server clients (introspection, audit)
+      flows:
+        clientCredentials:
+          tokenUrl: https://api.epa-platform.example.com/oauth/token
+          scopes:
+            system/AuditEvent.read: Read audit trail
+            system/*.read: System-level resource access
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        SMART access token (JWT). Validate via `/oauth/introspect` or local JWKS
+        from `{issuer}/.well-known/jwks.json`.
+
+  parameters:
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: true
+      description: |
+        Client-generated UUID v4 for end-to-end request tracing. Logged in immutable
+        AuditEvent and echoed in response.
+      schema:
+        type: string
+        format: uuid
+        example: 550e8400-e29b-41d4-a716-446655440000
+
+    XCorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: |
+        Business-process correlation ID spanning multiple API calls (e.g., a clinical
+        encounter or PA workflow session).
+      schema:
+        type: string
+        maxLength: 128
+        example: encounter-2026-08-28-001
+
+    XClientId:
+      name: X-Client-Id
+      in: header
+      required: false
+      description: SMART OAuth client_id for audit attribution when token lacks client claim
+      schema:
+        type: string
+        example: epa-client-001
+
+    XAuditSource:
+      name: X-Audit-Source
+      in: header
+      required: false
+      description: |
+        Originating system identifier (Facility ID, NPI, or vendor OID) for HIPAA
+        audit trail source attribution per 45 CFR 164.312(b).
+      schema:
+        type: string
+        example: urn:oid:2.16.840.1.113883.3.1234.1
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        UUID v4 ensuring exactly-once submission semantics. Keys are retained for 72
+        hours. Duplicate keys return the original response without mutation.
+      schema:
+        type: string
+        format: uuid
+
+  headers:
+    XRequestId:
+      description: Echo of request X-Request-Id
+      schema:
+        type: string
+        format: uuid
+
+    XCorrelationId:
+      description: Echo of request X-Correlation-Id
+      schema:
+        type: string
+
+    XAuditEventId:
+      description: |
+        Immutable AuditEvent resource identifier created for this operation.
+        Use for compliance queries and tamper-evident audit chain traversal.
+      schema:
+        type: string
+        example: audit-ev-9d4e5f6a
+
+    XResourceVersion:
+      description: Monotonic version counter for the affected resource (append-only log index)
+      schema:
+        type: integer
+        minimum: 1
+        example: 1
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    Unauthorized:
+      description: Missing or invalid access token
+      headers:
+        WWW-Authenticate:
+          schema:
+            type: string
+            example: Bearer error="invalid_token", error_description="Token expired"
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    Forbidden:
+      description: Insufficient scope or patient access denied
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    Conflict:
+      description: Idempotency key conflict with differing payload
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    UnprocessableEntity:
+      description: FHIR resource validation failure
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            description: Seconds until retry is allowed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    InternalServerError:
+      description: Unexpected server error
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/fhir+json:
+          schema:
+            $ref: '#/components/schemas/OperationOutcome'
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    OAuthError:
+      description: OAuth 2.0 error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OAuthErrorResponse'
+
+  schemas:
+    SmartConfiguration:
+      type: object
+      required:
+        - authorization_endpoint
+        - token_endpoint
+        - introspection_endpoint
+        - revocation_endpoint
+        - scopes_supported
+        - response_types_supported
+        - capabilities
+        - code_challenge_methods_supported
+      properties:
+        issuer:
+          type: string
+          format: uri
+          example: https://api.epa-platform.example.com
+        authorization_endpoint:
+          type: string
+          format: uri
+        token_endpoint:
+          type: string
+          format: uri
+        introspection_endpoint:
+          type: string
+          format: uri
+        revocation_endpoint:
+          type: string
+          format: uri
+        jwks_uri:
+          type: string
+          format: uri
+        scopes_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - openid
+            - fhirUser
+            - launch
+            - launch/patient
+            - offline_access
+            - patient/Patient.read
+            - patient/Coverage.read
+            - patient/Claim.read
+            - patient/Claim.write
+            - patient/CoverageEligibilityRequest.write
+            - user/Patient.read
+            - user/Coverage.read
+            - user/Claim.read
+            - user/Claim.write
+            - user/CoverageEligibilityRequest.write
+            - user/CoverageEligibilityResponse.read
+        response_types_supported:
+          type: array
+          items:
+            type: string
+          example: [code]
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - authorization_code
+            - refresh_token
+            - client_credentials
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+          example: [S256]
+        capabilities:
+          type: array
+          items:
+            type: string
+          example:
+            - launch-ehr
+            - launch-standalone
+            - client-public
+            - client-confidential-symmetric
+            - client-confidential-asymmetric
+            - context-ehr-patient
+            - context-standalone-patient
+            - permission-v2
+            - ssai
+        token_endpoint_auth_methods_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - client_secret_basic
+            - client_secret_post
+            - private_key_jwt
+
+    AuthorizationCodeTokenRequest:
+      type: object
+      required: [grant_type, code, redirect_uri, client_id, code_verifier]
+      properties:
+        grant_type:
+          type: string
+          const: authorization_code
+        code:
+          type: string
+        redirect_uri:
+          type: string
+          format: uri
+        client_id:
+          type: string
+        client_secret:
+          type: string
+          description: Required for confidential clients not using private_key_jwt
+        code_verifier:
+          type: string
+        client_assertion_type:
+          type: string
+          enum:
+            - urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+        client_assertion:
+          type: string
+          description: JWT signed by client for private_key_jwt authentication
+
+    RefreshTokenRequest:
+      type: object
+      required: [grant_type, refresh_token]
+      properties:
+        grant_type:
+          type: string
+          const: refresh_token
+        refresh_token:
+          type: string
+        client_id:
+          type: string
+        scope:
+          type: string
+          description: Optional scope reduction
+
+    ClientCredentialsTokenRequest:
+      type: object
+      required: [grant_type]
+      properties:
+        grant_type:
+          type: string
+          const: client_credentials
+        scope:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 3600
+        scope:
+          type: string
+          description: Granted scopes (space-delimited)
+        refresh_token:
+          type: string
+        patient:
+          type: string
+          description: FHIR Patient resource id (patient-scoped tokens)
+        encounter:
+          type: string
+          description: FHIR Encounter resource id when in encounter context
+        id_token:
+          type: string
+          description: OpenID Connect ID token (when openid scope granted)
+        need_patient_banner:
+          type: boolean
+        smart_style_url:
+          type: string
+          format: uri
+
+    TokenIntrospectionResponse:
+      type: object
+      required: [active]
+      properties:
+        active:
+          type: boolean
+        scope:
+          type: string
+        client_id:
+          type: string
+        username:
+          type: string
+        token_type:
+          type: string
+        exp:
+          type: integer
+          description: Expiration time (Unix epoch)
+        iat:
+          type: integer
+        sub:
+          type: string
+          description: Subject (often fhirUser reference)
+        aud:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        iss:
+          type: string
+        jti:
+          type: string
+        patient:
+          type: string
+          description: Patient context for patient-scoped tokens
+        fhirUser:
+          type: string
+          format: uri
+          description: FHIR resource URL of the authenticated user
+
+    OAuthErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum:
+            - invalid_request
+            - invalid_client
+            - invalid_grant
+            - unauthorized_client
+            - unsupported_grant_type
+            - invalid_scope
+            - access_denied
+        error_description:
+          type: string
+        error_uri:
+          type: string
+          format: uri
+
+    ProblemDetails:
+      type: object
+      description: RFC 9457 Problem Details
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://api.epa-platform.example.com/problems/validation-error
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+        requestId:
+          type: string
+          format: uuid
+        auditEventId:
+          type: string
+
+    OperationOutcome:
+      type: object
+      description: FHIR R4 OperationOutcome for error and warning reporting
+      required: [resourceType, issue]
+      properties:
+        resourceType:
+          type: string
+          const: OperationOutcome
+        id:
+          type: string
+        issue:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [severity, code]
+            properties:
+              severity:
+                type: string
+                enum: [fatal, error, warning, information]
+              code:
+                type: string
+                description: IssueType code from http://hl7.org/fhir/issue-type
+              details:
+                type: object
+                properties:
+                  text:
+                    type: string
+              diagnostics:
+                type: string
+              expression:
+                type: array
+                items:
+                  type: string
+
+    Meta:
+      type: object
+      description: FHIR Meta element with platform audit extensions
+      properties:
+        versionId:
+          type: string
+        lastUpdated:
+          type: string
+          format: date-time
+        source:
+          type: string
+          format: uri
+        tag:
+          type: array
+          items:
+            type: object
+            properties:
+              system:
+                type: string
+                format: uri
+              code:
+                type: string
+              display:
+                type: string
+        extension:
+          type: array
+          items:
+            $ref: '#/components/schemas/Extension'
+
+    Extension:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        valueString:
+          type: string
+        valueUri:
+          type: string
+          format: uri
+        valueReference:
+          type: object
+          properties:
+            reference:
+              type: string
+
+    Identifier:
+      type: object
+      properties:
+        system:
+          type: string
+          format: uri
+        value:
+          type: string
+        use:
+          type: string
+          enum: [usual, official, temp, secondary]
+
+    Reference:
+      type: object
+      properties:
+        reference:
+          type: string
+        type:
+          type: string
+        display:
+          type: string
+
+    CodeableConcept:
+      type: object
+      properties:
+        coding:
+          type: array
+          items:
+            type: object
+            properties:
+              system:
+                type: string
+                format: uri
+              code:
+                type: string
+              display:
+                type: string
+        text:
+          type: string
+
+    Patient:
+      type: object
+      description: FHIR R4 Patient (subset)
+      required: [resourceType]
+      properties:
+        resourceType:
+          type: string
+          const: Patient
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        active:
+          type: boolean
+        name:
+          type: array
+          items:
+            type: object
+            properties:
+              use:
+                type: string
+              family:
+                type: string
+              given:
+                type: array
+                items:
+                  type: string
+        gender:
+          type: string
+          enum: [male, female, other, unknown]
+        birthDate:
+          type: string
+          format: date
+        address:
+          type: array
+          items:
+            type: object
+
+    Coverage:
+      type: object
+      description: FHIR R4 Coverage (subset)
+      required: [resourceType, status, beneficiary, payor]
+      properties:
+        resourceType:
+          type: string
+          const: Coverage
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        status:
+          type: string
+          enum: [active, cancelled, draft, entered-in-error]
+        type:
+          $ref: '#/components/schemas/CodeableConcept'
+        subscriber:
+          $ref: '#/components/schemas/Reference'
+        beneficiary:
+          $ref: '#/components/schemas/Reference'
+        payor:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+        class:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                $ref: '#/components/schemas/CodeableConcept'
+              value:
+                type: string
+
+    Claim:
+      type: object
+      description: |
+        FHIR R4 Claim for prior authorization (`use: preauthorization`).
+        Profile: http://hl7.org/fhir/us/davinci-pas/StructureDefinition/davinci-pas-claim
+      required: [resourceType, status, type, use, patient, created, insurer, provider]
+      properties:
+        resourceType:
+          type: string
+          const: Claim
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        status:
+          type: string
+          enum: [active, cancelled, draft, entered-in-error]
+        type:
+          $ref: '#/components/schemas/CodeableConcept'
+        subType:
+          $ref: '#/components/schemas/CodeableConcept'
+        use:
+          type: string
+          const: preauthorization
+        patient:
+          $ref: '#/components/schemas/Reference'
+        created:
+          type: string
+          format: date-time
+        insurer:
+          $ref: '#/components/schemas/Reference'
+        provider:
+          $ref: '#/components/schemas/Reference'
+        priority:
+          $ref: '#/components/schemas/CodeableConcept'
+        related:
+          type: array
+          description: Links to prior/amended PA requests (immutable chain)
+          items:
+            type: object
+            properties:
+              claim:
+                $ref: '#/components/schemas/Reference'
+              relationship:
+                $ref: '#/components/schemas/CodeableConcept'
+        careTeam:
+          type: array
+          items:
+            type: object
+        supportingInfo:
+          type: array
+          items:
+            type: object
+        diagnosis:
+          type: array
+          items:
+            type: object
+        insurance:
+          type: array
+          items:
+            type: object
+        item:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              sequence:
+                type: integer
+              productOrService:
+                $ref: '#/components/schemas/CodeableConcept'
+              quantity:
+                type: object
+                properties:
+                  value:
+                    type: number
+                  unit:
+                    type: string
+              unitPrice:
+                type: object
+              detail:
+                type: array
+                items:
+                  type: object
+
+    ClaimResponse:
+      type: object
+      description: |
+        FHIR R4 ClaimResponse for PA disposition.
+        Profile: http://hl7.org/fhir/us/davinci-pas/StructureDefinition/davinci-pas-claimresponse
+      required: [resourceType, status, type, use, patient, created, insurer, outcome]
+      properties:
+        resourceType:
+          type: string
+          const: ClaimResponse
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        status:
+          type: string
+          enum: [active, cancelled, draft, entered-in-error]
+        type:
+          $ref: '#/components/schemas/CodeableConcept'
+        use:
+          type: string
+          const: preauthorization
+        patient:
+          $ref: '#/components/schemas/Reference'
+        created:
+          type: string
+          format: date-time
+        insurer:
+          $ref: '#/components/schemas/Reference'
+        request:
+          $ref: '#/components/schemas/Reference'
+        outcome:
+          type: string
+          enum: [queued, complete, error, partial]
+        disposition:
+          type: string
+          description: Human-readable payer decision summary
+        preAuthRef:
+          type: string
+          description: Payer-assigned authorization number
+        preAuthPeriod:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date
+            end:
+              type: string
+              format: date
+        item:
+          type: array
+          items:
+            type: object
+            properties:
+              itemSequence:
+                type: integer
+              adjudication:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    category:
+                      $ref: '#/components/schemas/CodeableConcept'
+                    reason:
+                      $ref: '#/components/schemas/CodeableConcept'
+                    amount:
+                      type: object
+
+    CoverageEligibilityRequest:
+      type: object
+      description: |
+        FHIR R4 CoverageEligibilityRequest.
+        Profile: http://hl7.org/fhir/us/davinci-drug-formulary/StructureDefinition/usdf-coverageeligibilityrequest
+      required: [resourceType, status, purpose, patient, created, insurer]
+      properties:
+        resourceType:
+          type: string
+          const: CoverageEligibilityRequest
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        status:
+          type: string
+          enum: [active, cancelled, draft, entered-in-error]
+        purpose:
+          type: array
+          items:
+            type: string
+            enum: [auth-requirements, benefits, discovery, validation]
+          minItems: 1
+        patient:
+          $ref: '#/components/schemas/Reference'
+        servicedDate:
+          type: string
+          format: date
+        created:
+          type: string
+          format: date-time
+        enterer:
+          $ref: '#/components/schemas/Reference'
+        provider:
+          $ref: '#/components/schemas/Reference'
+        insurer:
+          $ref: '#/components/schemas/Reference'
+        facility:
+          $ref: '#/components/schemas/Reference'
+        insurance:
+          type: array
+          items:
+            type: object
+            properties:
+              focal:
+                type: boolean
+              coverage:
+                $ref: '#/components/schemas/Reference'
+        item:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                $ref: '#/components/schemas/CodeableConcept'
+              productOrService:
+                $ref: '#/components/schemas/CodeableConcept'
+              modifier:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CodeableConcept'
+
+    CoverageEligibilityResponse:
+      type: object
+      description: FHIR R4 CoverageEligibilityResponse
+      required: [resourceType, status, purpose, patient, created, request, outcome, insurer]
+      properties:
+        resourceType:
+          type: string
+          const: CoverageEligibilityResponse
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        identifier:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+        status:
+          type: string
+          enum: [active, cancelled, draft, entered-in-error]
+        purpose:
+          type: array
+          items:
+            type: string
+        patient:
+          $ref: '#/components/schemas/Reference'
+        servicedDate:
+          type: string
+          format: date
+        created:
+          type: string
+          format: date-time
+        request:
+          $ref: '#/components/schemas/Reference'
+        outcome:
+          type: string
+          enum: [queued, complete, error, partial]
+        disposition:
+          type: string
+        insurer:
+          $ref: '#/components/schemas/Reference'
+        insurance:
+          type: array
+          items:
+            type: object
+            properties:
+              coverage:
+                $ref: '#/components/schemas/Reference'
+              inforce:
+                type: boolean
+              item:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    category:
+                      $ref: '#/components/schemas/CodeableConcept'
+                    benefit:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          type:
+                            $ref: '#/components/schemas/CodeableConcept'
+                          allowed:
+                            type: object
+                          used:
+                            type: object
+
+    Task:
+      type: object
+      description: FHIR R4 Task for PA workflow tracking
+      properties:
+        resourceType:
+          type: string
+          const: Task
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        status:
+          type: string
+          enum: [draft, requested, received, accepted, rejected, ready, cancelled, in-progress, on-hold, failed, completed, entered-in-error]
+        intent:
+          type: string
+          enum: [unknown, proposal, plan, order, original-order, reflex-order, filler-order, instance-order, option]
+        priority:
+          type: string
+        code:
+          $ref: '#/components/schemas/CodeableConcept'
+        description:
+          type: string
+        focus:
+          $ref: '#/components/schemas/Reference'
+        for:
+          $ref: '#/components/schemas/Reference'
+        authoredOn:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+        basedOn:
+          type: array
+          items:
+            $ref: '#/components/schemas/Reference'
+
+    AuditEvent:
+      type: object
+      description: |
+        FHIR R4 AuditEvent for HIPAA-compliant immutable audit logging.
+        Created server-side for every API operation; never client-writable.
+      required: [resourceType, type, recorded, agent, source, entity]
+      properties:
+        resourceType:
+          type: string
+          const: AuditEvent
+        id:
+          type: string
+        meta:
+          $ref: '#/components/schemas/Meta'
+        type:
+          type: object
+          properties:
+            system:
+              type: string
+            code:
+              type: string
+        subtype:
+          type: array
+          items:
+            type: object
+        action:
+          type: string
+          enum: [C, R, U, D, E]
+        recorded:
+          type: string
+          format: date-time
+        outcome:
+          type: string
+          enum: ['0', '4', '8', '12']
+        agent:
+          type: array
+          items:
+            type: object
+        source:
+          type: object
+        entity:
+          type: array
+          items:
+            type: object
+            properties:
+              what:
+                $ref: '#/components/schemas/Reference'
+              role:
+                type: object
+              lifecycle:
+                type: object
+
+    Bundle:
+      type: object
+      description: FHIR R4 Bundle for composite submissions
+      required: [resourceType, type]
+      properties:
+        resourceType:
+          type: string
+          const: Bundle
+        type:
+          type: string
+          enum: [collection, transaction, batch, searchset, history, document, message]
+        timestamp:
+          type: string
+          format: date-time
+        entry:
+          type: array
+          items:
+            type: object
+            properties:
+              fullUrl:
+                type: string
+              resource:
+                oneOf:
+                  - $ref: '#/components/schemas/Patient'
+                  - $ref: '#/components/schemas/Coverage'
+                  - $ref: '#/components/schemas/Claim'
+                  - $ref: '#/components/schemas/CoverageEligibilityRequest'
+
+    PriorAuthorizationRequestEnvelope:
+      oneOf:
+        - $ref: '#/components/schemas/Claim'
+        - $ref: '#/components/schemas/Bundle'
+      description: |
+        Single Claim or Bundle containing Claim + referenced Patient/Coverage/Practitioner
+        resources for a prior authorization submission.
+
+    PriorAuthorizationSubmissionResponse:
+      type: object
+      required: [requestId, status, submittedAt, auditEventId]
+      properties:
+        requestId:
+          type: string
+          pattern: '^pa-req-[a-f0-9]{8,32}$'
+          example: pa-req-7f3a2b1c
+        status:
+          type: string
+          enum: [received, queued, processing]
+          description: Initial platform status before payer adjudication
+        submittedAt:
+          type: string
+          format: date-time
+        auditEventId:
+          type: string
+          description: Immutable AuditEvent reference for this submission
+        claim:
+          $ref: '#/components/schemas/Claim'
+        task:
+          $ref: '#/components/schemas/Task'
+        auditChain:
+          type: object
+          description: Tamper-evident audit chain metadata
+          properties:
+            sequenceNumber:
+              type: integer
+            previousEventHash:
+              type: string
+              description: SHA-256 hash of prior audit event in chain
+            eventHash:
+              type: string
+              description: SHA-256 hash of this audit event
+
+    PriorAuthorizationStatusResponse:
+      type: object
+      required: [requestId, workflowStatus, claimResponse]
+      properties:
+        requestId:
+          type: string
+        workflowStatus:
+          type: string
+          enum:
+            - received
+            - queued
+            - processing
+            - pending-info
+            - approved
+            - partially-approved
+            - denied
+            - cancelled
+            - error
+        claimResponse:
+          $ref: '#/components/schemas/ClaimResponse'
+        task:
+          $ref: '#/components/schemas/Task'
+        statusHistory:
+          type: array
+          description: Append-only status transition log (immutable)
+          items:
+            type: object
+            required: [status, transitionedAt, auditEventId]
+            properties:
+              status:
+                type: string
+              transitionedAt:
+                type: string
+                format: date-time
+              auditEventId:
+                type: string
+              reason:
+                type: string
+        auditEventId:
+          type: string
+
+    EligibilityRequestEnvelope:
+      oneOf:
+        - $ref: '#/components/schemas/CoverageEligibilityRequest'
+        - $ref: '#/components/schemas/Bundle'
+      description: |
+        CoverageEligibilityRequest or Bundle with Patient, Coverage, and request resources.
+
+    EligibilityResponseEnvelope:
+      type: object
+      required: [eligibilityResponse, auditEventId]
+      properties:
+        eligibilityResponse:
+          $ref: '#/components/schemas/CoverageEligibilityResponse'
+        auditEventId:
+          type: string
+        cached:
+          type: boolean
+          description: True if idempotent replay of prior check
+        auditChain:
+          type: object
+          properties:
+            sequenceNumber:
+              type: integer
+            eventHash:
+              type: string
