@@ -13,7 +13,7 @@
 | Technical one-pager | [`docs/ONE_PAGER.md`](docs/ONE_PAGER.md) | Attach / convert to PDF for IT & compliance |
 | Cold-email template | [`docs/OUTREACH_EMAIL_TEMPLATE.md`](docs/OUTREACH_EMAIL_TEMPLATE.md) | Health IT / RCM outreach |
 | Root README | [`README.md`](../README.md) | GitHub + Quick Start + partnership CTA |
-| Demo video | [`docs/demo/provider-dashboard-demo.webm`](demo/provider-dashboard-demo.webm) | Link or attach (≈9s, ≈9 MB) |
+| Demo video | [README GIF](https://github.com/feedmecode9m/epa-platform#product-walkthrough--13-seconds) / [Release MP4](https://github.com/feedmecode9m/epa-platform/releases/tag/demo-v1) | Link these — not the old 9 MB WebM |
 
 ---
 

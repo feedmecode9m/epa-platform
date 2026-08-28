@@ -8,7 +8,7 @@
 
 ## Subject line options
 
-1. `CMS-0057-F and prior auth: a security-first ePA demo (9-second walkthrough)`
+1. `CMS-0057-F and prior auth: a security-first ePA demo (walkthrough)`
 2. `Reducing PA rework with documentation-gap scoring — design partner inquiry`
 3. `Immutable audit trail for ePA workflows — brief intro for [Organization]`
 
@@ -28,8 +28,10 @@ Functionally, the Provider Assistant:
 • Scores approval likelihood against payer policy rules
 • Surfaces documentation gaps before submission
 
-A nine-second product walkthrough is available here:
-[Link to docs/demo/provider-dashboard-demo.webm or hosted demo URL]
+A short product walkthrough is available here:
+https://github.com/feedmecode9m/epa-platform#product-walkthrough--13-seconds
+
+(MP4 download: https://github.com/feedmecode9m/epa-platform/releases/download/demo-v1/provider-dashboard-demo.mp4)
 
 I am seeking one design partnership with a mid-sized regional plan or specialty network to validate workflow fit, refine payer rulebooks, and align SMART on FHIR launch requirements to your EHR environment.
 
@@ -50,7 +52,7 @@ Subject: Re: CMS-0057-F and prior auth — design partner inquiry
 
 Dear [Name],
 
-Brief follow-up on my note regarding a security-first ePA assistant (FHIR extraction, approval-likelihood scoring, and forensic audit logging). Happy to send the one-pager and 9-second walkthrough asynchronously if a live call is difficult this month.
+Brief follow-up on my note regarding a security-first ePA assistant (FHIR extraction, approval-likelihood scoring, and forensic audit logging). Happy to send the one-pager and product walkthrough asynchronously if a live call is difficult this month.
 
 Best regards,
 [Name]
@@ -63,7 +65,7 @@ Best regards,
 - [ ] Replace `[Name]` / `[Organization]` with researched titles
 - [ ] Mention one specific PA pain point for their specialty (e.g., spine, oncology, rheumatology)
 - [ ] Attach or link [`ONE_PAGER.md`](ONE_PAGER.md) as PDF when exporting
-- [ ] Host or attach `provider-dashboard-demo.webm` (GitHub raw / Loom / private Drive)
+- [ ] Link the GitHub README GIF section or Release MP4 (do not link the old large WebM blob)
 - [ ] Do **not** claim HIPAA certification, BAAs signed, or live PHI production readiness
 
 ---

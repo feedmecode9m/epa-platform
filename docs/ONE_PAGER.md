@@ -32,7 +32,7 @@ Regional health plans and independent specialty networks face this gap acutely: 
 | Provider dashboard | Next.js UI with live walkthrough video |
 | SMART on FHIR / OAuth2 + PKCE | Auth foundation for EHR launch (Track B roadmap) |
 
-**9-second product walkthrough:** [`docs/demo/provider-dashboard-demo.webm`](demo/provider-dashboard-demo.webm)
+**Product walkthrough:** [GIF on GitHub](https://github.com/feedmecode9m/epa-platform#product-walkthrough--13-seconds) · [MP4 download](https://github.com/feedmecode9m/epa-platform/releases/download/demo-v1/provider-dashboard-demo.mp4)
 
 ---
 
